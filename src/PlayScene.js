@@ -5,8 +5,8 @@
 var PlayLayer = cc.Layer.extend({
     sprite:null,
     fragments: [],
+    stopCount: 0,
     NUM: 4,
-    listener: null,
     ctor: function () {
         this._super();
         var winSize = cc.director.getWinSize();
@@ -17,51 +17,7 @@ var PlayLayer = cc.Layer.extend({
         board.setPosition(centerPos);
         this.addChild(board);
 
-        this.init();
         this.clip(res.img.dog);
-    },
-    toTouchBegan: function (touch, event) {        //实现 onTouchBegan 事件回调函数
-        var target = event.getCurrentTarget();    // 获取事件所绑定的 target
-
-        // 获取当前点击点所在相对按钮的位置坐标
-        var locationInNode = target.convertToNodeSpace(touch.getLocation());
-        var s = target.getContentSize();
-        var rect = cc.rect(0, 0, s.width, s.height);
-
-        if (cc.rectContainsPoint(rect, locationInNode)) {        // 点击范围判断检测
-            cc.log('sprite ' + target.ox + ',' + target.oy + ' began... x = ' + locationInNode.x + ', y = ' + locationInNode.y);
-            target.opacity = 180;
-            return true;
-        }
-        return false;
-    },
-    toTouchMoved: function (touch, event) {            // 触摸移动时触发
-        // 移动当前按钮精灵的坐标位置
-        var target = event.getCurrentTarget();
-        var delta = touch.getDelta();
-        target.x += delta.x;
-        target.y += delta.y;
-        target.stopAllActions();
-
-        if (Math.abs(target.x - target.ox) < 30 && Math.abs(target.y - target.oy) < 30) {
-            target.x = target.ox;
-            target.y = target.oy;
-        }
-    },
-    toTouchEnded: function (touch, event) {            // 点击事件结束处理
-        var target = event.getCurrentTarget();
-        cc.log('sprite ' + target.ox + ',' + target.oy + ' onTouchesEnded.. ');
-        target.setOpacity(255);
-        target.setZOrder(100);
-    },
-    init: function () {
-        this.listener = cc.EventListener.create({
-            event: cc.EventListener.TOUCH_ONE_BY_ONE,
-            swallowTouches: true,
-            onTouchBegan: this.toTouchBegan,
-            onTouchMoved: this.toTouchMoved,
-            onTouchEnded: this.toTouchEnded
-        });
     },
     clip: function (img) {
         var winSize = cc.director.getWinSize();
@@ -74,9 +30,9 @@ var PlayLayer = cc.Layer.extend({
                 var y = height * jdx;
                 var fragment = new Fragment(img, cc.rect(x, y, width, height));
                 fragment.setScale(0.5);
-                fragment.ox = x +  width / 2;
-                fragment.oy = winSize.height - y - height / 2;
-                cc.eventManager.addListener(this.listener.clone(), fragment);
+                fragment.ox = (x +  width / 2) / 2;
+                fragment.oy = (winSize.height - y - height / 2) / 2;
+                cc.eventManager.addListener(fragment.listener, fragment);
                 fragment.setPosition(cc.p(-fragment.width/2, winSize.height - fragment.height / 2));
                 this.fragments.push(fragment);
                 this.addChild(fragment);
@@ -86,14 +42,20 @@ var PlayLayer = cc.Layer.extend({
     },
     queueUp: function (idx) {
         var self = this;
-        var fragment = this.fragments[idx % (this.NUM * this.NUM)];
-        var winSize = cc.director.getWinSize();
-        fragment.setPosition(cc.p(-fragment.width/2, winSize.height - fragment.height / 2));
-        var actionTo = cc.moveTo(5, cc.p(winSize.width + fragment.width / 2, winSize.height - fragment.height / 2));
-        fragment.runAction(cc.Sequence.create(actionTo));
+        var fragment = this.fragments[idx % (this.fragments.length)];
+        var time = 0;
+        if (!fragment.isStopped) {
+            var winSize = cc.director.getWinSize();
+            fragment.setPosition(cc.p(-fragment.width/2, winSize.height - fragment.height / 2));
+            var actionTo = cc.moveTo(5, cc.p(winSize.width + fragment.width / 2, winSize.height - fragment.height / 2));
+            fragment.runAction(cc.Sequence.create(actionTo));
+            time = 1000;
+        } else if ((++this.stopCount)%this.fragments.length < 3) {
+            time = 1000;
+        }
         setTimeout(function () {
             self.queueUp(idx+1);
-        }, 1000);
+        }, time);
     }
 });
 
