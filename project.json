@@ -13,7 +13,7 @@
     "jsList" : [
         "src/resource.js",
         "src/app.js",
-        "src/PlayScene.js",
+        "src/play.js",
         "src/sprite/Fragment.js"
     ]
 }

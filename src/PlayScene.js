@@ -7,6 +7,7 @@ var PlayLayer = cc.Layer.extend({
     sprite:null,
     fragments: [],
     stopCount: 0,
+    img: null,
     ctor: function () {
         this._super();
         var winSize = cc.director.getWinSize();
@@ -17,7 +18,8 @@ var PlayLayer = cc.Layer.extend({
         board.setPosition(centerPos);
         this.addChild(board);
 
-        this.clip(res.img.dog);
+        this.img = res.img.dog;
+        this.clip(this.img);
     },
     listener: function () {
         return cc.EventListener.create({
@@ -88,8 +90,6 @@ var PlayLayer = cc.Layer.extend({
     },
     toTouchBegan: function (touch, event) {        //实现 onTouchBegan 事件回调函数
         var target = event.getCurrentTarget();    // 获取事件所绑定的 target
-
-        // 获取当前点击点所在相对按钮的位置坐标
         var locationInNode = target.convertToNodeSpace(touch.getLocation());
         var s = target.getContentSize();
         var rect = cc.rect(0, 0, s.width, s.height);
@@ -120,8 +120,8 @@ var PlayLayer = cc.Layer.extend({
         target.layer.checkBorder(target);
     },
     checkBorder: function (target) {
-        var borderX = target.width / 15;
-        var borderY = target.height / 15;
+        var borderX = 7;
+        var borderY = 7;
 
         for(var idx = 0; idx < target.layer.fragments.length; idx++) {
             var fragment = target.layer.fragments[idx];
@@ -136,16 +136,20 @@ var PlayLayer = cc.Layer.extend({
 
             var posX = fragment.x;
             var posY = fragment.y;
+            var directionX = 1;
+            var directionY = 1;
             if (deltaOX == 0) {
                 if (deltaX > borderX || deltaY > (borderY + target.height)) {
                     continue;
                 }
                 posY += (deltaOY < 0 ? -target.height : target.height)/2;
+                directionY = 2;
             } else {
                 if (deltaY > borderY || deltaX > (borderX + target.width)) {
                     continue;
                 }
                 posX += (deltaOX < 0 ? target.width : -target.width)/2;
+                directionX = 2;
             }
 
             target.x = posX;
