@@ -115,12 +115,14 @@ var PlayLayer = cc.Layer.extend({
         target.setOpacity(255);
         target.setLocalZOrder(100);
 
-        if (target.deltaPos === null || target.deltaPos.x < 0 || target.deltaPos.y < 0) {
+        var px = target.deltaPos.x;
+        var py = target.deltaPos.y;
+        if (target.deltaPos === null || px < 0 || px >= NUM || py < 0 || py >= NUM) {
             target.isMoving = false;
             return;
         }
 
-        var fragment = target.layer.fragments[target.deltaPos.x][target.deltaPos.y];
+        var fragment = target.layer.fragments[px][py];
         target.layer.swap(fragment, target);
         target.isMoving = false;
     },
