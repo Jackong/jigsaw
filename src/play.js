@@ -39,17 +39,19 @@ var PlayLayer = cc.Layer.extend({
         var x = idx * width;
         var y = jdx * height;
 
-        var centerPos =  this.centerPos();
-        var posX = (idx + 0.5) * width;
-        var posY = centerPos.y + height *  (NUM - jdx);
+        var scale = (320 / NUM) / width;
 
-        cc.log('clip: ' + idx + ',' + jdx + '(' + x + ',' + y + '):(' + posX + ',' + posY + ')');
+        var posX = (idx + 0.5) * width ;
+        var posY = (this.centerPos().y + height *  (NUM - jdx - 2)) ;
+
+        cc.log('clip: ' + scale + ':' + idx + ',' + jdx + '(' + x + ',' + y + '):(' + posX + ',' + posY + ')');
 
         var fragment = new Fragment(this.img, cc.rect(x, y, width, height));
+        fragment.setScale(scale);
         fragment.setDimension(idx, jdx);
         fragment.origin = {px: idx, py: jdx};
         fragment.layer = this;
-        fragment.setPosition(cc.p(posX, posY));
+        fragment.setPosition(cc.p(posX * scale, posY * scale));
 
         return fragment;
     },
