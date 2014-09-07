@@ -5,11 +5,21 @@
 var NUM = 3;
 
 var PlayLayer = cc.Layer.extend({
+    RESTART: 1,
+    SHARE: 2,
     scale: 1,
     img: null,
     fragments: [],
+    isOver: false,
     ctor: function () {
         this._super();
+    },
+    init: function () {
+        this._super();
+        this.scale = 1;
+        this.img = null;
+        this.fragments = [];
+        this.isOver = false;
 
         var board = cc.Sprite.create(res.img.board);
         board.setPosition(this.centerPos());
@@ -84,6 +94,9 @@ var PlayLayer = cc.Layer.extend({
         });
     },
     toTouchBegan: function (touch, event) {        //实现 onTouchBegan 事件回调函数
+        if (this.currentLayer.isOver) {
+            return false;
+        }
         var target = event.getCurrentTarget();    // 获取事件所绑定的 target
         if (!target.containPos(touch)) {        // 点击范围判断检测
             return false;
@@ -136,7 +149,12 @@ var PlayLayer = cc.Layer.extend({
         target.setOpacity(255);
         target.setLocalZOrder(100);
         if (this.currentLayer.isAllCorrect()) {
-            alert('Good Job!');
+            this.currentLayer.isOver = true;
+            var self = this;
+            setTimeout(function () {
+                alert('Good Job!');
+                self.currentLayer.gameOver();
+            }, 300);
         }
     },
     isAllCorrect: function () {
@@ -149,20 +167,20 @@ var PlayLayer = cc.Layer.extend({
         }
         return true;
     },
-    swap: function (fragment1, fragment2) {
-        cc.log('target move to' + fragment2.x + ',' + fragment2.y);
-        cc.log('fragment move to' + fragment1.x + ',' + fragment1.y);
-        var action1 = cc.moveTo(0.3, cc.p(fragment2.x, fragment2.y));
-        var action2 = cc.moveTo(0.3, cc.p(fragment1.x, fragment1.y));
-
-        fragment1.runAction(cc.Sequence.create(action1));
-        fragment2.runAction(cc.Sequence.create(action2));
-        var tmpX = fragment1.px;
-        var tmpY = fragment1.py;
-        fragment1.setDimension(fragment2.px, fragment2.py);
-        fragment2.setDimension(tmpX, tmpY);
-        this.fragments[fragment1.px][fragment1.py] = fragment1;
-        this.fragments[tmpX][tmpY] = fragment2;
+    restart: function () {
+        this.upset();
+        this.isOver = false;
+        this.removeChildByTag(this.RESTART, true);
+        this.removeChildByTag(this.SHARE, true);
+    },
+    gameOver: function () {
+        var menuItemRestart = cc.MenuItemSprite.create(
+            cc.Sprite.create(res.img.restart), // normal state image
+            cc.Sprite.create(res.img.restart), //select state image
+            this.restart, this);
+        var btMenu = cc.Menu.create(menuItemRestart);
+        btMenu.setPosition(this.centerPos());
+        this.addChild(btMenu, 101, this.RESTART);
     }
 });
 
@@ -170,6 +188,7 @@ var PlayScene = cc.Scene.extend({
     onEnter: function () {
         this._super();
         var layer = new PlayLayer();
+        layer.init();
         this.addChild(layer);
     }
 });
