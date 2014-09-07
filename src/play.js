@@ -5,6 +5,7 @@
 var NUM = 3;
 
 var PlayLayer = cc.Layer.extend({
+    scale: 1,
     img: null,
     fragments: [],
     ctor: function () {
@@ -22,38 +23,51 @@ var PlayLayer = cc.Layer.extend({
 
         var width = sprite.width / NUM;
         var height = sprite.height / NUM;
-        cc.log('size: ' + width + ',' + height);
+        this.scale = (320 / NUM) / width;
+        cc.log('size: ' + this.scale + ',' + width + ',' + height);
 
         for (var idx = 0; idx < NUM; idx++) {
             this.fragments.push([]);
             for (var jdx = 0; jdx < NUM; jdx++) {
-                var fragment = this.clip(idx, jdx, width, height);
+                var fragment = this.clip(idx, jdx, width, height, this.scale);
                 cc.eventManager.addListener(this.listener(), fragment);
                 this.addChild(fragment);
                 this.fragments[idx].push(fragment);
             }
         }
+        this.upset();
     },
-    clip: function (idx, jdx, width, height) {
+    clip: function (idx, jdx, width, height, scale) {
 
         var x = idx * width;
         var y = jdx * height;
 
-        var scale = (320 / NUM) / width;
+        var posX = (idx + 0.5) * width  * scale;
+        var posY = (this.centerPos().y + height *  (NUM - jdx - 2)) * scale;
 
-        var posX = (idx + 0.5) * width ;
-        var posY = (this.centerPos().y + height *  (NUM - jdx - 2)) ;
-
-        cc.log('clip: ' + scale + ':' + idx + ',' + jdx + '(' + x + ',' + y + '):(' + posX + ',' + posY + ')');
+        cc.log('clip: ' + idx + ',' + jdx + '(' + x + ',' + y + '):(' + posX + ',' + posY + ')');
 
         var fragment = new Fragment(this.img, cc.rect(x, y, width, height));
         fragment.setScale(scale);
-        fragment.setDimension(idx, jdx);
-        fragment.origin = {px: idx, py: jdx};
-        fragment.layer = this;
-        fragment.setPosition(cc.p(posX * scale, posY * scale));
+        fragment.setOriginIdx(idx, jdx);
+        fragment.setIndex(idx, jdx);
+        fragment.setPos(posX, posY);
+        fragment.setPosition(cc.p(posX, posY));
 
         return fragment;
+    },
+    upset: function () {
+        for (var idx = 0; idx < NUM; idx++) {
+            for (var jdx = 0; jdx < NUM; jdx++) {
+                var fragment1 = this.fragments[this.random()][jdx];
+                var fragment2 = this.fragments[idx][this.random()];
+                this.crush(fragment1, fragment2);
+                fragment1.homing();
+            }
+        }
+    },
+    random: function () {
+        return parseInt(Math.random() * (NUM - 1));
     },
     centerPos: function () {
         var winSize = cc.director.getWinSize();
@@ -61,6 +75,7 @@ var PlayLayer = cc.Layer.extend({
     },
     listener: function () {
         return cc.EventListener.create({
+            currentLayer: this,
             event: cc.EventListener.TOUCH_ONE_BY_ONE,
             swallowTouches: true,
             onTouchBegan: this.toTouchBegan,
@@ -70,16 +85,12 @@ var PlayLayer = cc.Layer.extend({
     },
     toTouchBegan: function (touch, event) {        //实现 onTouchBegan 事件回调函数
         var target = event.getCurrentTarget();    // 获取事件所绑定的 target
-        var locationInNode = target.convertToNodeSpace(touch.getLocation());
-        var s = target.getContentSize();
-        var rect = cc.rect(0, 0, s.width, s.height);
-
-        if (cc.rectContainsPoint(rect, locationInNode)) {        // 点击范围判断检测
-            cc.log('sprite began... x = ' + locationInNode.x + ', y = ' + locationInNode.y);
-            target.opacity = 180;
-            return true;
+        if (!target.containPos(touch)) {        // 点击范围判断检测
+            return false;
         }
-        return false;
+        target.setLocalZOrder(1);
+        target.opacity = 180;
+        return true;
     },
     toTouchMoved: function (touch, event) {            // 触摸移动时触发
         // 移动当前按钮精灵的坐标位置
@@ -88,45 +99,55 @@ var PlayLayer = cc.Layer.extend({
         if (delta.x === 0 && delta.y === 0) {
             return;
         }
-        if (target.isMoving) {
-            return;
-        }
-        target.isMoving = true;
-        cc.log('touch move:' + delta.x + ',' + delta.y);
-        var px = target.px;
-        var py = target.py;
-        if (Math.abs(delta.x) >= Math.abs(delta.y)) {
-            if (delta.x < 0) {
-                px--;
-            } else {
-                px++;
+        target.x += delta.x;
+        target.y += delta.y;
+        var self = this.currentLayer;
+        for (var idx = -1; idx <= 1; idx++) {
+            for (var jdx = -1; jdx <= 1; jdx++) {
+                if (idx === 0 && jdx === 0) {
+                    continue;
+                }
+                var x = idx + target.idx.x;
+                var y = jdx + target.idx.y;
+                if (x < 0 || y < 0 || x >= NUM || y >= NUM) {
+                    continue;
+                }
+                var fragment = self.fragments[x][y];
+                if (!fragment.containPos(touch)) {
+                    continue;
+                }
+                self.crush(target, fragment);
             }
-        } else {
-            if (delta.y < 0) {
-                py++;
-            } else {
-                py--;
-            }
         }
-        cc.log('touch move:' + px + ',' + py);
-        target.deltaPos = {x: px, y: py};
+    },
+    crush: function (target, fragment) {
+        if (fragment === target) {
+            return false;
+        }
+        fragment.crush(target);
+        this.fragments[fragment.idx.x][fragment.idx.y] = fragment;
+        this.fragments[target.idx.x][target.idx.y] = target;
+        return true;
     },
     toTouchEnded: function (touch, event) {            // 点击事件结束处理
         var target = event.getCurrentTarget();
         cc.log('sprite ' + target.x + ',' + target.y + ' onTouchesEnded.. ');
+        target.homing();
         target.setOpacity(255);
         target.setLocalZOrder(100);
-
-        var px = target.deltaPos.x;
-        var py = target.deltaPos.y;
-        if (target.deltaPos === null || px < 0 || px >= NUM || py < 0 || py >= NUM) {
-            target.isMoving = false;
-            return;
+        if (this.currentLayer.isAllCorrect()) {
+            alert('Good Job!');
         }
-
-        var fragment = target.layer.fragments[px][py];
-        target.layer.swap(fragment, target);
-        target.isMoving = false;
+    },
+    isAllCorrect: function () {
+        for (var idx = 0; idx < NUM; idx++) {
+            for (var jdx = 0; jdx < NUM; jdx++) {
+                if (!this.fragments[idx][jdx].isCorrect()) {
+                    return false;
+                }
+            }
+        }
+        return true;
     },
     swap: function (fragment1, fragment2) {
         cc.log('target move to' + fragment2.x + ',' + fragment2.y);
