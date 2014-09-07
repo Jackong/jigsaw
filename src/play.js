@@ -101,7 +101,7 @@ var PlayLayer = cc.Layer.extend({
         if (!target.containPos(touch)) {        // 点击范围判断检测
             return false;
         }
-        target.setLocalZOrder(1);
+        target.setLocalZOrder(100);
         target.opacity = 180;
         return true;
     },
@@ -147,14 +147,10 @@ var PlayLayer = cc.Layer.extend({
         cc.log('sprite ' + target.x + ',' + target.y + ' onTouchesEnded.. ');
         target.homing();
         target.setOpacity(255);
-        target.setLocalZOrder(100);
+        target.setLocalZOrder(99);
         if (this.currentLayer.isAllCorrect()) {
             this.currentLayer.isOver = true;
-            var self = this;
-            setTimeout(function () {
-                alert('Good Job!');
-                self.currentLayer.gameOver();
-            }, 300);
+            this.currentLayer.gameOver();
         }
     },
     isAllCorrect: function () {
