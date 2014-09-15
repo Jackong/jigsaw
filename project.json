@@ -14,6 +14,7 @@
         "src/resource.js",
         "src/app.js",
         "src/play.js",
+        "src/loading.js",
         "src/sprite/Fragment.js"
     ]
 }
